@@ -108,7 +108,9 @@ namespace UNEB
                 .GetTypes()
                 .Where(t =>
                     t != derivedType &&
-                    derivedType.IsAssignableFrom(t)
+                    derivedType.IsAssignableFrom(t) &&
+                    !t.IsAbstract
+
                     ).ToList();
             //Populate canvasContext with entries for all node types
             Pair<string, Action>[] canvasContext = new Pair<string, Action>[nodeTypes.Count];
