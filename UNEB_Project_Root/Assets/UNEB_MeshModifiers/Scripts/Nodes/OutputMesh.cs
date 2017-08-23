@@ -12,7 +12,7 @@ namespace UNEB.MeshModifiers {
             AddInput("Input");
         }
 
-        public override List<Mesh> Modify(List<Mesh> input) {
+        public override List<Model> Modify(List<Model> input) {
             return input;
         }
     }

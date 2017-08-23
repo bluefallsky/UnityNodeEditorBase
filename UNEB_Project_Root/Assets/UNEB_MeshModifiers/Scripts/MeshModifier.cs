@@ -6,7 +6,7 @@ using UNEB;
 namespace UNEB.MeshModifiers {
     public class MeshModifier : MonoBehaviour {
 
-        public MeshModifierGraph graph;
+        public NodeGraph graph;
         public Transform template;
         public bool singleMesh;
 
@@ -15,37 +15,40 @@ namespace UNEB.MeshModifiers {
             ClearMesh();
 
             List<InputMesh> inputNodes = graph.nodes.FindAll(x => x.GetType() == typeof(InputMesh)).ConvertAll(x => x as InputMesh);
-            List<Mesh> meshes = MeshFromGameObject(template, singleMesh);
+            List<Model> models = ModelsFromGameObjects(template, singleMesh);
 
             for (int i = 0; i < inputNodes.Count; i++) {
                 InputMesh inputNode = inputNodes[i];
                 MeshModifierNode currentNode = inputNode.GetOutput(0).GetInput(0).ParentNode as MeshModifierNode;
                 while(currentNode != null) {
-                    meshes = currentNode.Modify(meshes);
+                    models = currentNode.Modify(models);
                     if (currentNode.OutputCount == 0) break;
                     currentNode = currentNode.GetOutput(0).GetInput(0).ParentNode as MeshModifierNode;
                 }
             }
-            if (meshes.Count == 1) {
+            if (models.Count == 1) {
                 MeshFilter filter = gameObject.AddComponent<MeshFilter>();
-                filter.mesh = meshes[0];
+                filter.mesh = models[0].mesh;
                 MeshRenderer renderer = gameObject.AddComponent<MeshRenderer>();
+                renderer.materials = models[0].materials;
             }
 
         }
 
-        private List<Mesh> MeshFromGameObject(Transform root, bool singleMesh) {
-            List<Mesh> output = new List<Mesh>();
+        private List<Model> ModelsFromGameObjects(Transform root, bool singleMesh) {
+            List<Model> output = new List<Model>();
 
             MeshRenderer[] renderers = root.GetComponentsInChildren<MeshRenderer>();
             for (int i = 0; i < renderers.Length; i++) {
                 MeshRenderer renderer = renderers[i];
                 MeshFilter filter = renderer.GetComponent<MeshFilter>();
                 if (filter == null) continue;
-                output.Add(BakeMeshTransform(root, filter));
+                Mesh mesh = BakeMeshTransform(root, filter);
+                Material[] materials = renderer.sharedMaterials;
+                output.Add(new Model(mesh,materials));
             }
             if (singleMesh) {
-                output = new List<Mesh>() { CombineMeshes(output) };
+                output = new List<Model>() { Model.CombineModels(output) };
             }
             return output;
         }
@@ -62,16 +65,6 @@ namespace UNEB.MeshModifiers {
                 verts[i] = local;
             }
             mesh.SetVertices(verts);
-            return mesh;
-        }
-
-        private Mesh CombineMeshes(List<Mesh> meshes) {
-            CombineInstance[] combines = meshes.ConvertAll(x => new CombineInstance() {
-                mesh = x,
-                transform = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, Vector3.one)
-            }).ToArray();
-            Mesh mesh = new Mesh();
-            mesh.CombineMeshes(combines);
             return mesh;
         }
 

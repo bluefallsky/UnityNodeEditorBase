@@ -6,10 +6,10 @@ namespace UNEB.MeshModifiers {
     public class ArrayModifier : MeshModifierNode {
         public override string name { get { return "Array Modifier"; } }
 
-        private int _count;
-        private Vector3 _posOffset;
-        private Vector3 _rotOffset;
-        private Mesh[] _meshOutput;
+        public int count;
+        public Vector3 posOffset;
+        public Vector3 rotOffset;
+        public Mesh[] meshOutput;
 
         public override void Init() {
             base.Init();
@@ -23,9 +23,9 @@ namespace UNEB.MeshModifiers {
         }
 
         public override void OnBodyGUI() {
-            _count = EditorGUILayout.IntField("Count", _count);
-            _posOffset = EditorGUILayout.Vector3Field("Offset", _posOffset);
-            _rotOffset = EditorGUILayout.Vector3Field("Rotation", _rotOffset);
+            count = EditorGUILayout.IntField("Count", count);
+            posOffset = EditorGUILayout.Vector3Field("Offset", posOffset);
+            rotOffset = EditorGUILayout.Vector3Field("Rotation", rotOffset);
         }
 
         public override void OnNewInputConnection(NodeInput addedInput) {
@@ -36,21 +36,22 @@ namespace UNEB.MeshModifiers {
             //_meshOutput = null;
         }
 
-        public override List<Mesh> Modify(List<Mesh> input) {
+        public override List<Model> Modify(List<Model> input) {
+            List<Model> output = new List<Model>();
+
             /*if (spline) {
                 if (fit == Fit.Spline && updateOnSpline) spline.OnRefresh.AddListenerOnce(OnSplineRefreshEvent);
                 else spline.OnRefresh.RemoveListener(OnSplineRefreshEvent);
             }*/
 
             //int count = GetCount(inputMesh);
-            List<Mesh> output = new List<Mesh>();
 
             for (int i = 0; i < input.Count; i++) {
 
-                CombineInstance[] submeshCombines = new CombineInstance[_count];
-                for (int k = 0; k < _count; k++) {
-                    Vector3 pos = _posOffset * k;
-                    Vector3 rot = _rotOffset * k;
+                CombineInstance[] submeshCombines = new CombineInstance[count];
+                for (int k = 0; k < count; k++) {
+                    Vector3 pos = posOffset * k;
+                    Vector3 rot = rotOffset * k;
                     Vector3 scale = Vector3.one;
                     /*if (fit != Fit.Count && scaleToFit) {
                         float segmentWidth = GetSegmentWidth(inputMesh); //eg 4
@@ -69,13 +70,13 @@ namespace UNEB.MeshModifiers {
                     }*/
                     //scale += (scaleOffset * k);
                     submeshCombines[k] = new CombineInstance();
-                    submeshCombines[k].mesh = input[i];
+                    submeshCombines[k].mesh = input[i].mesh;
                     submeshCombines[k].transform = Matrix4x4.TRS(pos, Quaternion.Euler(rot), scale);
                 }
                 Mesh arrayedSubmesh = new Mesh();
                 arrayedSubmesh.CombineMeshes(submeshCombines, true);
                 arrayedSubmesh.RecalculateBounds();
-                output.Add(arrayedSubmesh);
+                output.Add(new Model(arrayedSubmesh,input[i].materials));
             }
             return output;
         }

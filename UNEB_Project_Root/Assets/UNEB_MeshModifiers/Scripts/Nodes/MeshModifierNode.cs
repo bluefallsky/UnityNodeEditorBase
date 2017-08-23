@@ -5,6 +5,6 @@ using UnityEngine;
 namespace UNEB.MeshModifiers {
     public abstract class MeshModifierNode : Node {
 
-        public abstract List<Mesh> Modify(List<Mesh> input);
+        public abstract List<Model> Modify(List<Model> input);
     }
 }
