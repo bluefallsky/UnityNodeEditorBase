@@ -26,14 +26,27 @@ namespace UNEB.MeshModifiers {
                     currentNode = currentNode.GetOutput(0).GetInput(0).ParentNode as MeshModifierNode;
                 }
             }
-            if (models.Count == 1) {
-                MeshFilter filter = gameObject.AddComponent<MeshFilter>();
-                filter.mesh = models[0].mesh;
-                MeshRenderer renderer = gameObject.AddComponent<MeshRenderer>();
-                renderer.materials = models[0].materials;
-            }
-
+            if (models.Count == 1) ShowModel(gameObject, models[0]);
+            else ShowModels(models);
         }
+
+        private void ShowModel(GameObject target, Model model) {
+            MeshFilter filter = target.AddComponent<MeshFilter>();
+            filter.mesh = model.mesh;
+            MeshRenderer renderer = target.AddComponent<MeshRenderer>();
+            renderer.materials = model.materials;
+        }
+        private void ShowModels(List<Model> models) {
+            for (int i = 0; i < models.Count; i++) {
+                GameObject go = new GameObject("mesh output "+i);
+                go.transform.parent = transform;
+                go.transform.localPosition = Vector3.zero;
+                go.transform.localRotation = Quaternion.identity;
+                go.transform.localScale = Vector3.one;
+                ShowModel(go, models[i]);
+            }
+        }
+
 
         private List<Model> ModelsFromGameObjects(Transform root, bool singleMesh) {
             List<Model> output = new List<Model>();
@@ -56,21 +69,38 @@ namespace UNEB.MeshModifiers {
         private Mesh BakeMeshTransform(Transform root, MeshFilter filter) {
             Mesh mesh = filter.sharedMesh.Copy();
             List<Vector3> verts = new List<Vector3>();
+            List<Vector3> norms = new List<Vector3>();
+            List<Vector4> tangent = new List<Vector4>();
             mesh.GetVertices(verts);
+            mesh.GetNormals(norms);
+            mesh.GetTangents(tangent);
+
             for (int i = 0; i < verts.Count; i++) {
-                //Transform from filter local to world
-                Vector3 world = filter.transform.TransformPoint(mesh.vertices[i]);
-                //Transform from world to root local
-                Vector3 local = root.InverseTransformPoint(world);
+                //Vert position
+                Vector3 world = filter.transform.TransformPoint(verts[i]); //Transform from filter local to world
+                Vector3 local = root.InverseTransformPoint(world); //Transform from world to root local 
                 verts[i] = local;
+
+                //Vert normal
+                world = filter.transform.TransformDirection(norms[i]);
+                local = root.InverseTransformDirection(world);
+                norms[i] = local;
+
+                //Vert tangent
+                float w = tangent[i].w;
+                world = filter.transform.TransformDirection(tangent[i]);
+                local = root.InverseTransformDirection(world);
+                tangent[i] = new Vector4(local.x,local.y,local.z,w);
             }
             mesh.SetVertices(verts);
+            mesh.SetNormals(norms);
+            mesh.SetTangents(tangent);
             return mesh;
         }
 
         private void ClearMesh() {
             int children = transform.childCount;
-            for (int i = children - 1; i > 0; i--) {
+            for (int i = children - 1; i >= 0; i--) {
                 DestroyImmediate(transform.GetChild(i).gameObject);
             }
             DestroyImmediate(GetComponent<MeshRenderer>());

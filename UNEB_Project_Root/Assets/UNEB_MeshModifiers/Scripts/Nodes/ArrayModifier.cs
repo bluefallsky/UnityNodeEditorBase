@@ -4,8 +4,6 @@ using System.Collections.Generic;
 
 namespace UNEB.MeshModifiers {
     public class ArrayModifier : MeshModifierNode {
-        public override string name { get { return "Array Modifier"; } }
-
         public int count;
         public Vector3 posOffset;
         public Vector3 rotOffset;
@@ -13,6 +11,8 @@ namespace UNEB.MeshModifiers {
 
         public override void Init() {
             base.Init();
+
+            name = "Modifiers/Array Modifier";
             AddInput("Input");
             AddOutput("Ouput");
 
@@ -46,37 +46,54 @@ namespace UNEB.MeshModifiers {
 
             //int count = GetCount(inputMesh);
 
+            //Loop through input models
             for (int i = 0; i < input.Count; i++) {
+                CombineInstance[] finalCombines = new CombineInstance[input[i].mesh.subMeshCount];
 
-                CombineInstance[] submeshCombines = new CombineInstance[count];
-                for (int k = 0; k < count; k++) {
-                    Vector3 pos = posOffset * k;
-                    Vector3 rot = rotOffset * k;
-                    Vector3 scale = Vector3.one;
-                    /*if (fit != Fit.Count && scaleToFit) {
-                        float segmentWidth = GetSegmentWidth(inputMesh); //eg 4
-                        float lengthToFit = GetLength(); //eg 11.12041
-                        float fitScale = lengthToFit / (segmentWidth * count); //eg 1.390052
-                        Vector3 fitAxis = posOffset / segmentWidth; //eg (0,0,1)
-                        Vector3 fitScaleOffset = fitAxis * fitScale; //eg (0,0,1.390052)
+                //Loop through model submeshes
+                for (int g = 0; g < input[i].mesh.subMeshCount; g++) {
+                    //Create a CombineInstance array for the submesh
+                    CombineInstance[] submeshCombines = new CombineInstance[count];
 
-                        scale.x *= Mathf.Lerp(1f, fitScaleOffset.x, fitAxis.x);
-                        scale.y *= Mathf.Lerp(1f, fitScaleOffset.y, fitAxis.y);
-                        scale.z *= Mathf.Lerp(1f, fitScaleOffset.z, fitAxis.z);
-                        pos.x *= Mathf.Lerp(1f, fitScaleOffset.x, fitAxis.x);
-                        pos.y *= Mathf.Lerp(1f, fitScaleOffset.y, fitAxis.y);
-                        pos.z *= Mathf.Lerp(1f, fitScaleOffset.z, fitAxis.z);
+                    //Perform the array modifier
+                    for (int k = 0; k < count; k++) {
+                        Vector3 pos = posOffset * k;
+                        Vector3 rot = rotOffset * k;
+                        Vector3 scale = Vector3.one;
+                        /*if (fit != Fit.Count && scaleToFit) {
+                            float segmentWidth = GetSegmentWidth(inputMesh); //eg 4
+                            float lengthToFit = GetLength(); //eg 11.12041
+                            float fitScale = lengthToFit / (segmentWidth * count); //eg 1.390052
+                            Vector3 fitAxis = posOffset / segmentWidth; //eg (0,0,1)
+                            Vector3 fitScaleOffset = fitAxis * fitScale; //eg (0,0,1.390052)
 
-                    }*/
-                    //scale += (scaleOffset * k);
-                    submeshCombines[k] = new CombineInstance();
-                    submeshCombines[k].mesh = input[i].mesh;
-                    submeshCombines[k].transform = Matrix4x4.TRS(pos, Quaternion.Euler(rot), scale);
+                            scale.x *= Mathf.Lerp(1f, fitScaleOffset.x, fitAxis.x);
+                            scale.y *= Mathf.Lerp(1f, fitScaleOffset.y, fitAxis.y);
+                            scale.z *= Mathf.Lerp(1f, fitScaleOffset.z, fitAxis.z);
+                            pos.x *= Mathf.Lerp(1f, fitScaleOffset.x, fitAxis.x);
+                            pos.y *= Mathf.Lerp(1f, fitScaleOffset.y, fitAxis.y);
+                            pos.z *= Mathf.Lerp(1f, fitScaleOffset.z, fitAxis.z);
+
+                        }*/
+                        //scale += (scaleOffset * k);
+
+                        //Setup CombineInstance
+                        submeshCombines[k] = new CombineInstance() {
+                            mesh = input[i].mesh,
+                            transform = Matrix4x4.TRS(pos, Quaternion.Euler(rot), scale),
+                            subMeshIndex = g
+                        };
+                    }
+                    Mesh arrayedSubmesh = new Mesh();
+                    arrayedSubmesh.CombineMeshes(submeshCombines, true);
+                    finalCombines[g] = new CombineInstance() {
+                        mesh = arrayedSubmesh,
+                        transform = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, Vector3.one),
+                    };
                 }
-                Mesh arrayedSubmesh = new Mesh();
-                arrayedSubmesh.CombineMeshes(submeshCombines, true);
-                arrayedSubmesh.RecalculateBounds();
-                output.Add(new Model(arrayedSubmesh,input[i].materials));
+                Mesh finalMesh = new Mesh();
+                finalMesh.CombineMeshes(finalCombines, false);
+                output.Add(new Model(finalMesh, input[i].materials));
             }
             return output;
         }
